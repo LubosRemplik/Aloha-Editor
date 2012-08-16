@@ -7,7 +7,7 @@
  * Version: 1.2.1
  * Build date: 8 October 2011
  */
-define( 'aloha/rangy-core', [], function(){} );
+define('aloha/rangy-core', [], function() {
 var rangy = (function() {
 
 
@@ -85,7 +85,8 @@ var rangy = (function() {
         modules: {},
         config: {
             alertOnWarn: false,
-            preferTextRange: false
+            // Note: this was set to true, see issue https://github.com/alohaeditor/Aloha-Editor/issues/474
+            preferTextRange: true
         }
     };
 
@@ -2021,7 +2022,22 @@ rangy.createModule("DomUtil", function(api, module) {
                     tempRange.moveStart("character", 1);
                 }
             } else {
-                offset = workingRange.text.length;
+            	// IE7 sometimes has weird workingranges that apparently do not start in the workingNode any more, but in
+            	// some kind of phantom paragraph, that cannot be found in the DOM.
+            	// in such situations, the workingRange.text no longer is a substring at the start of the boundaryNode.data
+            	// If we find such a situation, we skip all characters at the start of the workingRange.data, that are not
+            	// at the start of the boundaryNode.data.
+            	// Before comparing, we have to replace all nbsp with normal spaces
+            	var wrText = workingRange.text.replace(/\u00a0/g, " ");
+            	var bnText = boundaryNode.data.replace(/\u00a0/g, " ");
+            	if (bnText.indexOf(wrText) !== 0) {
+            		while (wrText.length > 0 && bnText.indexOf(wrText) !== 0) {
+            			wrText = wrText.substr(1);
+            		}
+            		offset = wrText.length;
+            	} else {
+            		offset = workingRange.text.length;
+            	}
             }
             boundaryPosition = new DomPosition(boundaryNode, offset);
         } else {
@@ -2082,18 +2098,23 @@ rangy.createModule("DomUtil", function(api, module) {
             boundaryParent.appendChild(workingNode);
         }
 
-        workingRange.moveToElementText(workingNode);
-        workingRange.collapse(!isStart);
+		try {
+			workingRange.moveToElementText(workingNode);
+	        workingRange.collapse(!isStart);
+		} catch ( err ) {
+			// @todo window.console.log('problem with moveToElementText');
+			//return false;
+		}
 
-        // Clean up
-        boundaryParent.removeChild(workingNode);
+		// Clean up
+		boundaryParent.removeChild(workingNode);
 
-        // Move the working range to the text offset, if required
-        if (nodeIsDataNode) {
-            workingRange[isStart ? "moveStart" : "moveEnd"]("character", boundaryOffset);
-        }
+		// Move the working range to the text offset, if required
+		if (nodeIsDataNode) {
+			workingRange[isStart ? "moveStart" : "moveEnd"]("character", boundaryOffset);
+		}
 
-        return workingRange;
+		return workingRange;
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -2401,11 +2422,7 @@ rangy.createModule("DomUtil", function(api, module) {
         WrappedRange.rangeToTextRange = function(range) {
             if (range.collapsed) {
                 var tr = createBoundaryTextRange(new DomPosition(range.startContainer, range.startOffset), true);
-
-
-
                 return tr;
-
                 //return createBoundaryTextRange(new DomPosition(range.startContainer, range.startOffset), true);
             } else {
                 var startRange = createBoundaryTextRange(new DomPosition(range.startContainer, range.startOffset), true);
@@ -2884,10 +2901,19 @@ rangy.createModule("DomUtil", function(api, module) {
         selProto.removeAllRanges = function() {
             // Added try/catch as fix for issue #21
             try {
-                this.docSelection.empty();
+            
+            	var isNativeIE7 = (jQuery.browser.msie && jQuery.version < 8 && (typeof document.documentMode === 'undefined'));
+            	if (!isNativeIE7) {
+            		this.docSelection.empty();
+            	}
 
                 // Check for empty() not working (issue #24)
                 if (this.docSelection.type != "None") {
+
+					if (isNativeIE7) {
+            			this.docSelection.empty();
+            		}
+
                     // Work around failure to empty a control selection by instead selecting a TextRange and then
                     // calling empty()
                     var doc;
@@ -2913,11 +2939,16 @@ rangy.createModule("DomUtil", function(api, module) {
             if (this.docSelection.type == CONTROL) {
                 addRangeToControlSelection(this, range);
             } else {
+				try {
                 WrappedRange.rangeToTextRange(range).select();
                 this._ranges[0] = range;
                 this.rangeCount = 1;
                 this.isCollapsed = this._ranges[0].collapsed;
                 updateAnchorAndFocusFromRange(this, range, false);
+				} catch (e) {
+					// @todo
+					// window.console.log('problem at addRange');
+				}
             }
         };
 
@@ -3239,4 +3270,9 @@ rangy.createModule("DomUtil", function(api, module) {
         }
         win = null;
     });
+});
+
+// TODO we should avoid populating the global namespace
+window.rangy = rangy;
+return rangy;
 });

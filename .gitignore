@@ -10,3 +10,5 @@ WebContent/plugins/com.gentics.aloha.plugins.GCN/
 doc/guides/staging
 *.js~
 *.orig
+*.swp
+.externalToolBuilders

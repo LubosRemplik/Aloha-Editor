@@ -1362,8 +1362,40 @@ var tests = {
 		{	start: 'foo\n\t\t\t[]bar',
 			execResult: 'foo[]bar'
 		},
-		{	start: 'foo     []bar',
+		{	exclude: ['mozilla'], // broken in FF 7.01; NS_ERROR_DOM_INDEX_SIZE_ERR
+			start: 'foo     []bar',
 			execResult: 'foo[]bar'
+		},
+		{
+			start: '     fo[]o barbar fo bar-ba-bar',
+			execResult: ' f[]o barbar fo bar-ba-bar'
+		},
+		{	start: '<p>\n\t\t\tf[]oo bar</p>',
+			execResult: '<p> []oo bar</p>'
+		},
+		{	
+			start: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p>[]after table</p>',
+			execResult: '<p>before table</p><p>[]after table</p>'
+		},
+		{	
+			start: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div>		<p>[]after table</p>',
+			execResult: '<p>before table</p><p>[]after table</p>'
+		},
+		{	
+			start: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div>	' + "\n" + '	<p>[]after table</p>',
+			execResult: '<p>before table</p><p>[]after table</p>'
+		},
+		{	
+			start: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p>&nbsp;[]after table</p>',
+			execResult: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p>[]after table</p>'
+		},
+		{	
+			start: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p>aft[]er table</p>',
+			execResult: '<p>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p>af[]er table</p>'
+		},
+		{
+			start: '<p><b>before table</p><div class="aloha-table-wrapper" contenteditable="false"></div><p><b><i>[]after</i> table</b></p>',
+			execResult: '<p><b>before table</p><p><b><i>[]after</i> table</b></p>'
 		}
 	]
 }

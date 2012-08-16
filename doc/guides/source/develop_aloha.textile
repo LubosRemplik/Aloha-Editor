@@ -1,24 +1,53 @@
 h2. Using Aloha Editor
 
-After reading this guide, you will be able to:
-
-* Prepare your development envireonment 
-* build your custom Aloha Editor
-
 endprologue.
 
 h3. Clone from Github
 
-NOTE: You should know how to work with git before continuing.
-
-First of all you have to get your copy of the Aloha Editor. Just clone our "Github repository":http://github.com/alohaeditor/Aloha-Editor:
-WARNING: fork Aloha Editor before doing anything ;-)
+Fork it on github "Github repository":http://github.com/alohaeditor/Aloha-Editor, then:
 
 <shell>
 git clone git@github.com:YOURNAME/Aloha-Editor.git alohaeditor
 cd alohaeditor
 git checkout dev
 </shell>
+
+h3. Pre-commit hook
+
+To avoid accidentally committing debugging code, symlink or copy
+.githooks/pre-commit into .git/hooks. This will check for the most
+common mistakes like 'debugger;' or 'console.log();' statements before
+every commit.
+
+h3. Repository Directory Structure
+
+* /
+* /bin - build scripts
+* /build - build configuration
+
+* /doc
+* /doc/api - the API documentation
+* /doc/guides
+
+* /vendor - third party libraries (e.g. jquery)
+* /target - build output folder
+
+* /src
+* /src/css - Aloha core css files
+* /src/demo - Aloha demos
+* /src/img - Aloha core images
+
+* /src/lib - Require plugins and bootstrap files
+* /src/lib/aloha - Main Aloha Editor core sources
+* /src/lib/vendor - third party libraries jquery
+* /src/lib/util - utility libraries (e.g. json2.js, class.js)
+
+* /src/plugins
+* /src/plugins/common - Common plugin bundle
+* /src/plugins/extra - Extra plugin bundle
+
+* /src/test - QUnit tests
+
 
 h3. Building  - Aloha Building
 
@@ -33,37 +62,104 @@ See: http://npmjs.org
 curl http://npmjs.org/install.sh | sh
 </shell>
 
-* Install r.js
-<shell>
-npm install -g requirejs@0.26.0 
-Note: Please use r.js 0.26.0 for now
-</shell>
-
-Linux:
-Add r.js to your bin directory:
-<shell>
-ln -s /root/node_modules/requirejs/bin/r.js /usr/local/bin/
-</shell>
-
-Mac:
-r.js should be automatically added to your bin directory. Manual linking:
-<shell>
-ln -s /Users/{username}/lib/node_modules/requirejs/bin/r.js /Users/{username}/bin/r.js
-</shell>
-
-Manually from "github":https://github.com/jrburke/r.js
-
 
 * Invoke Building:
 <shell>
 cd alohaeditor
-./bin/build.sh build/aloha
+mvn3 clean package
 </shell>
 
+You probably want to ommit building of the api and guides:
+<shell>
+mvn3 clean package -DbareMode=true
+</shell>
+
+You can also build just the css:
+<shell>
+mvn3 generate-sources
+</shell>
+
+The resulting css will be generated in src/css/aloha.css.
 
 h4. Other OS: 
 * Microsoft Windows: Not yet supported
 
+h4. Customized builds:
+
+Aloha-Editor uses maven to build a distributable package (includes
+documentation etc.). To build just the javascript, it suffices to invoke
+"r.js":https://github.com/jrburke/r.js/ from the command line. For example
+
+<shell>
+node build/r.js -o build/aloha/build.js
+</shell>
+
+To customize the build to your needs, you can modify the build profile
+in build/aloha/build.js. The most likely customization you want to make
+is to remove or add plugins from the include property of the 'aloha'
+module definition.
+
+To include i18n files in your build, define the locale property. If the
+locale property is not defined, the appropriate i18n files will be
+loaded dynamically by requirejs. Remember to configure Aloha.locale
+as well.
+
+Unless you ask for plugins to be loaded that are not defined in the
+build profile, or use a locale that was not defined during building, no
+additional files should be downloaded by requirejs. In the future
+requirejs may be replaced with an AMD stub such that requirejs is not
+necessary for production deployments.
+
+Css building can be customized by adding or removing entries in
+src/css/aloha-common-extra.css. If you removed or added plugins in the
+r.js build profile, you also want to add or remove the appropriate css
+import statement. Then, run
+
+<shell>
+mvn3 generate-sources
+</shell>
+
+The resulting css will be generated in src/css/aloha.css.
+
+If you want to redefine modules in the build profile, for example if you
+want to use your own jqueryui, please first read "Custom jQuery,
+jQueryUI and other modules":using_aloha.html
+
+h3. Developing CSS
+
+src/css/aloha.css is a concatenated and minified version of
+src/css/aloha-common-extra.css. To develop CSS without rebuilding the
+CSS everytime, temporarily copy src/css/aloha-comm-extra.css over
+src/css/aloha.css.
+
+Having the built version be included during development makes it
+possible to develop Aloha without having to worry too much about the IE
+maximum stylesheet limit.
+
+Every CSS class must have either an 'aloha-' prefix, or must be limited
+to occur within an '.aloha' context. For example:
+
+<css>
+.aloha .new-style { ... }
+.aloha-new-style { ... }
+</css>
+
+This is to avoid interference with the CSS of the host page.
+
+If UI elements are added to the DOM with the purpose of absolute
+posistioning, which is common when implementing UI widgets, they should
+be appended to the ui/context module:
+
+<javascript>
+define(['ui/context'], function(Context) {
+    // preferably append it directly to the element
+    Context.element.append(widgetx);
+    // sometimes you need a selector instead
+    elementx.widgetx({
+        appendTo: Context.selector
+    });
+});
+</javascript>
 
 h3. Guide 
 
@@ -104,15 +200,7 @@ guides preview
 
 Preview URL: http://localhost:9292/
 
-
 * Building Guides:
 <shell>
 guides build
 </shell>
-
-
-
-h3. Changelog
-
-* October 11, 2011: Added building information
-* July 3, 2011: Initial version by "Sebastian Kurfürst":credits.html#skurfuerst and "Christopher Hlubek":credits.html#hlubek
